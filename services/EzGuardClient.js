@@ -67,7 +67,9 @@ class EzGuardClient {
         });
 
         if (response.status !== 200) {
-            throw new Error(`GET ${path} failed: ${response.status}`);
+            const err = new Error(`GET ${path} failed: ${response.status}`);
+            err.status = response.status;
+            throw err;
         }
 
         return response.data;

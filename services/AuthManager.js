@@ -4,15 +4,25 @@ import { EZGUARD_EMAIL, EZGUARD_PASSWORD } from '../config.js';
 let clientInstance = null;
 let isInitialized = false;
 
-/**
- * Returns authenticated EzGuardClient instance
- * Creates connection only on first call, reuses token on subsequent calls
- */
+function createClientWrapper(client) {
+    return {
+        async get(path, params = {}) {
+            try {
+                return await client.get(path, params);
+            } catch (err) {
+                if (err.status !== 403) throw err;
+                await refreshAuthentication();
+                return await client.get(path, params);
+            }
+        }
+    };
+}
+
 async function getAuthenticatedClient() {
     if (!clientInstance) {
         clientInstance = new EzGuardClient(EZGUARD_EMAIL, EZGUARD_PASSWORD);
     }
-    
+
     if (!isInitialized) {
         try {
             await clientInstance.init();
@@ -25,13 +35,10 @@ async function getAuthenticatedClient() {
             throw error;
         }
     }
-    
-    return clientInstance;
+
+    return createClientWrapper(clientInstance);
 }
 
-/**
- * Refreshes authentication when token expires
- */
 async function refreshAuthentication() {
     try {
         if (clientInstance) {
@@ -48,9 +55,6 @@ async function refreshAuthentication() {
     }
 }
 
-/**
- * Resets connection state
- */
 function resetConnection() {
     clientInstance = null;
     isInitialized = false;
