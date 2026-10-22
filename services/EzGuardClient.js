@@ -50,18 +50,30 @@ class EzGuardClient {
         const newCookies = response.headers['set-cookie'];
         const sessionCookie = newCookies?.find(c => c.startsWith('sessionid='));
         this.sessionId = sessionCookie?.split('=')[1].split(';')[0];
+        const refreshedCsrf = newCookies?.find(c => c.startsWith('ezcsrftoken='));
+        if (refreshedCsrf) {
+            this.csrfToken = refreshedCsrf.split('=')[1].split(';')[0];
+        }
     }
 
     getCookieHeader() {
         return `ezcsrftoken=${this.csrfToken}; sessionid=${this.sessionId}`;
     }
 
+    getRequestHeaders(extra = {}) {
+        return {
+            'Cookie': this.getCookieHeader(),
+            'Content-Type': 'application/json',
+            'Referer': 'https://wow.ez-guard.com/',
+            'x-csrftoken': this.csrfToken,
+            'x-clientdetails': 'version=4.6.21;lang=he',
+            ...extra
+        };
+    }
+
     async get(path, params = {}) {
         const response = await axios.get(`${this.baseUrl}${path}`, {
-            headers: {
-                'Cookie': this.getCookieHeader(),
-                'Content-Type': 'application/json'
-            },
+            headers: this.getRequestHeaders(),
             params: params,
             validateStatus: () => true
         });
